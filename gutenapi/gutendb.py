@@ -1,11 +1,22 @@
+"""
+GutenaDB
+=========
+This module contains:
+1. Classes for each database table and view.
+2. get_books method for getting books data from database and return it as a disctionary.
+"""
+
+# imports
+import os
+from contextlib import contextmanager
+
+from sqlalchemy import Column, Integer, String, desc
+
 from sqlalchemy import create_engine, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, Integer, String, desc
-from contextlib import contextmanager
-import os
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -27,7 +38,7 @@ def session_scope():
 
 
 class Author(Base):
-    """Base author class"""
+    """Base Author class for database table books_author"""
 
     __tablename__ = "books_author"
     id = Column(Integer, primary_key=True)
@@ -37,7 +48,7 @@ class Author(Base):
 
 
 class AuthorLink(Base):
-    """Base author class"""
+    """Base AuthorLink class for database table books_book_authors"""
 
     __tablename__ = "books_book_authors"
     id = Column(Integer, primary_key=True)
@@ -46,7 +57,7 @@ class AuthorLink(Base):
 
 
 class Language(Base):
-    """Base author class"""
+    """Base Language class for database table books_language"""
 
     __tablename__ = "books_language"
     id = Column(Integer, primary_key=True)
@@ -54,7 +65,7 @@ class Language(Base):
 
 
 class LanguageLink(Base):
-    """Base author class"""
+    """Base LanguageLink class for database table books_book_languages"""
 
     __tablename__ = "books_book_languages"
     id = Column(Integer, primary_key=True)
@@ -63,7 +74,7 @@ class LanguageLink(Base):
 
 
 class Subject(Base):
-    """Base author class"""
+    """Base Subject class for database table books_subject"""
 
     __tablename__ = "books_subject"
     id = Column(Integer, primary_key=True)
@@ -71,7 +82,7 @@ class Subject(Base):
 
 
 class SubjectLink(Base):
-    """Base author class"""
+    """Base SubjectLink class for database table books_book_subjects"""
 
     __tablename__ = "books_book_subjects"
     id = Column(Integer, primary_key=True)
@@ -80,7 +91,7 @@ class SubjectLink(Base):
 
 
 class BookShelf(Base):
-    """Base author class"""
+    """Base BookShelf class for database table books_bookshelf"""
 
     __tablename__ = "books_bookshelf"
     id = Column(Integer, primary_key=True)
@@ -88,7 +99,7 @@ class BookShelf(Base):
 
 
 class BookShelfLink(Base):
-    """Base author class"""
+    """Base BookShelfLink class for database table books_book_bookshelves"""
 
     __tablename__ = "books_book_bookshelves"
     id = Column(Integer, primary_key=True)
@@ -97,7 +108,7 @@ class BookShelfLink(Base):
 
 
 class BookFormat(Base):
-    """Base author class"""
+    """Base BookFormat class for database table books_format"""
 
     __tablename__ = "books_format"
     id = Column(Integer, primary_key=True)
@@ -107,24 +118,62 @@ class BookFormat(Base):
 
 
 class Books(Base):
-    """Base books class. This is a view in database"""
+    """Base Books class for database view books_vw"""
 
     __tablename__ = "books_vw"
     book_id = Column(Integer, primary_key=True)
     guten_id = Column(Integer)
-    download_count = Column(Integer)
     title = Column(String)
+    download_count = Column(Integer)
     author = Column(String)
     birth_year = Column(Integer)
     death_year = Column(Integer)
     book_lang = Column(String)
-    subject = Column(String)
+    book_subject = Column(String)
     shelf = Column(String)
     mime_type = Column(String)
 
 
 def get_books(**kwargs):
+    """
+    This method queries database based on input filter params and provides
+    a dictionary in relevant format.
+    :param kwargs:
 
+            Following filter params can be passed.
+            - guten_ids : List of book Gutenberg ids.
+            - languages : List of book languages.
+            - authors   : List of book authors
+            - titles    : List of book titles
+            - topics    : List of book topics(Queried on booksjelf and subject)
+            - mime_types: List of mime_types(Queried on book format)
+
+            Other params:
+            - page     : Page number, should be 0 or not passed for the initial request.
+            - page_size: (Not implemented on API side)number of books to passed in a single page,
+                         defaults to 25.
+
+    :return: A dictionary with following keys:
+            - count   : Total number of books meeting the filter criteria.
+            - previous: page number to be passed in subsequent request to get data for
+                        previous page
+            - next    : page number to be passed in subsequent request to get data for
+                        next page
+            - books   : List of dictionaries containing book details for books meeting the
+                        filter criteria. Each dictionary contains the following:
+                        - "gutenberg_id"  : book gutenberg id,
+                        - "title"         : book title,
+                        - "download_count": number of downloads,
+                        - "authors"       : List of book authors, each author will be a dictionary
+                                            containing "name", "birth_year" and "death_year".
+                        - "languages"     : List of languages for the book,
+                        - "subjects"      : List of book subjects,
+                        - "bookshelves"   : List of book shelves,
+                        - "links"         : List of dictionaries, each dictionary contains "mime_type"
+                                            and "url".
+    """
+
+    # Get filter criteria
     guten_ids = kwargs.get("guten_ids", None)
     languages = kwargs.get("languages", None)
     authors = kwargs.get("authors", None)
@@ -142,50 +191,60 @@ def get_books(**kwargs):
         query = session.query(
             Books.book_id, Books.guten_id, Books.title, Books.download_count
         )
+
+        # filter for gutenberg ids
         if guten_ids is not None:
             query = query.filter(Books.guten_id.in_(guten_ids))
 
+        # filter for book language
         if languages is not None:
             _filter = []
             for lang in languages:
                 _filter.append(Books.book_lang.like("%" + lang + "%"))
             query = query.filter(or_(*_filter))
 
-        print(authors)
+        # filter for book author
         if authors is not None:
             _filter = []
             for author in authors:
                 _filter.append(Books.author.ilike("%" + author + "%"))
             query = query.filter(or_(*_filter))
 
+        # filter for book title
         if titles is not None:
             _filter = []
             for title in titles:
                 _filter.append(Books.title.ilike("%" + title + "%"))
             query = query.filter(or_(*_filter))
 
+        # filter for book topic (bookshelf or subject)
         if topics is not None:
             _filter = []
             for topic in topics:
-                _filter.append(Books.subject.ilike("%" + topic + "%"))
+                _filter.append(Books.book_subject.ilike("%" + topic + "%"))
                 _filter.append(Books.shelf.ilike("%" + topic + "%"))
             query = query.filter(or_(*_filter))
 
-        book_count = query.distinct().count()
-
+        # filter for book mime types
         if mime_types is not None:
             _filter = []
             for mime_type in mime_types:
                 _filter.append(Books.title.like("%" + mime_type + "%"))
             query = query.filter(or_(*_filter))
 
+        # get total number of books meeting the criteria
+        book_count = query.distinct().count()
+
+        # Add order criteria to be download count descending
         query = query.distinct().order_by(desc(Books.download_count))
 
+        # Set which page data to get
         if page_size:
             query = query.limit(page_size)
         if page:
             query = query.offset(page * page_size)
 
+        # Set page numbers
         if page > 0:
             prev_page = page - 1
         else:
@@ -195,11 +254,12 @@ def get_books(**kwargs):
         if page_size * next_page > book_count:
             next_page = page
 
+        # query database to get the books
         books = query.all()
 
+        # loop on the books and add the relevant details
         if books is not None:
             for book in books:
-
                 book_authors = (
                     session.query(Author.name, Author.birth_year, Author.death_year)
                     .filter(Author.id == AuthorLink.author_id)
@@ -244,6 +304,8 @@ def get_books(**kwargs):
                         ],
                     }
                 )
+
+    # crate response dictionary
     response = {
         "count": book_count,
         "previous": prev_page,
