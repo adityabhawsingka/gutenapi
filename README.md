@@ -154,7 +154,9 @@ https://gutenapi.herokuapp.com/api?guten_ids=1
 If you want to test this API locally then you would need to do the following:
 1. Obviously download the repo and install dependencies mentioned in requirements.txt.
 2. Setup a PostgresSQL or MySQL database and import data from respective data dumps:
+```
 PostgresSQL data : https://drive.google.com/file/d/1NJVtOs4Zxk3Go1S9oeurI3pBNH1YWN85/view
 MySQL data       : https://drive.google.com/file/d/1Q3QZcy3fmltgLIwLsldPx_KYBOTNuAGA/view
+```
 3. Create the database view (script available in sql directory) in your database.
 4. Update .env file with database connection details and that should get you moving.
