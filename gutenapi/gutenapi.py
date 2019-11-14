@@ -30,7 +30,7 @@ def query_books():
             authors = request_json.get("authors", None)
             titles = request_json.get("titles", None)
             mime_types = request_json.get("mime_types", None)
-            page = request_json.get("page", 0)
+            page = str(request_json.get("page", '0'))
 
         # Get input parameters when request method is GET
         if request.method == "GET":
@@ -52,7 +52,13 @@ def query_books():
             mime_types = request.args.get("mime_types", None)
             if mime_types is not None:
                 mime_types = mime_types.split(",")
-            page = request.args.get("page", 0)
+            page = request.args.get("page", '0')
+
+        if page.isdigit() is False:
+            page = '0'
+
+        if guten_ids is not None:
+            guten_ids = [g_id for g_id in guten_ids if g_id.isdigit() is True]
 
         # Call get_books method to obtain the response data
         response = get_books(
